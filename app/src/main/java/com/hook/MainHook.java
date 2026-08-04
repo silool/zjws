@@ -2,10 +2,15 @@ package com.hook;
 
 import de.robv.android.xposed.*;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import java.nio.charset.StandardCharsets;
 
 public class MainHook implements IXposedHookLoadPackage {
 
     private static final long MULTIPLIER = 5;
+    // 仅匹配JSON key位置（前有{或,），避免误伤string value中的同名字段
+    private static final java.util.regex.Pattern TIMING_PATTERN =
+        java.util.regex.Pattern.compile(
+            "(?:\\{|,)\\s*\"(duration|elapsed|totalTime|playTime|battleTime|costTime|usedTime|fightTime|useTime|roundTime)\"\\s*:\\s*(\\d+)");
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -31,7 +36,7 @@ public class MainHook implements IXposedHookLoadPackage {
                             if (url.contains("report") || url.contains("battle")
                                 || url.contains("fight") || url.contains("pve")
                                 || url.contains("pvp") || url.contains("stage")
-                                || url.contains("round") || url.contains("game")) {
+                                || url.contains("round")) {
                                 // OK — 落到下面的修改逻辑
                             } else {
                                 return; // 跳过，不修改
@@ -40,26 +45,25 @@ public class MainHook implements IXposedHookLoadPackage {
                             // 获取URL失败则保守跳过
                             return;
                         }
-                        java.util.regex.Pattern pattern =
-                            java.util.regex.Pattern.compile(
-                                "\"(duration|elapsed|totalTime|playTime|battleTime|costTime|usedTime|fightTime|useTime|roundTime)\"\\s*:\\s*(\\d+)");
                         java.util.regex.Matcher matcher =
-                            pattern.matcher(new String(data, "UTF-8"));
+                            TIMING_PATTERN.matcher(new String(data, StandardCharsets.UTF_8));
                         StringBuffer sb = new StringBuffer();
                         while (matcher.find()) {
                             String num = matcher.group(2);
                             try {
                                 long val = Long.parseLong(num);
+                                // >=10000 = 10秒级毫秒值，小值可能是ID不做修改
                                 if (val >= 10000) {
                                     matcher.appendReplacement(sb,
-                                        "\"" + matcher.group(1) + "\":" + (val * MULTIPLIER));
+                                        matcher.group(0).replaceFirst("\\d+",
+                                            String.valueOf(val * MULTIPLIER)));
                                     continue;
                                 }
                             } catch (NumberFormatException e) {}
                             matcher.appendReplacement(sb, matcher.group(0));
                         }
                         matcher.appendTail(sb);
-                        p.args[1] = sb.toString().getBytes("UTF-8");
+                        p.args[1] = sb.toString().getBytes(StandardCharsets.UTF_8);
                     }
                 }
             );
