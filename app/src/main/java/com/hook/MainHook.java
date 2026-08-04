@@ -43,7 +43,8 @@ public class MainHook implements IXposedHookLoadPackage {
                         java.util.regex.Pattern pattern =
                             java.util.regex.Pattern.compile(
                                 "\"(duration|elapsed|totalTime|playTime|battleTime|costTime|usedTime|fightTime|useTime|roundTime)\"\\s*:\\s*(\\d+)");
-                        java.util.regex.Matcher matcher = pattern.matcher(new String(data));
+                        java.util.regex.Matcher matcher =
+                            pattern.matcher(new String(data, "UTF-8"));
                         StringBuffer sb = new StringBuffer();
                         while (matcher.find()) {
                             String num = matcher.group(2);
@@ -58,7 +59,7 @@ public class MainHook implements IXposedHookLoadPackage {
                             matcher.appendReplacement(sb, matcher.group(0));
                         }
                         matcher.appendTail(sb);
-                        p.args[1] = sb.toString().getBytes();
+                        p.args[1] = sb.toString().getBytes("UTF-8");
                     }
                 }
             );
