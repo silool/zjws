@@ -39,7 +39,10 @@ public class MainHook implements IXposedHookLoadPackage {
                         if (!(boolean) p.getResult()) return;
                         android.media.AudioTimestamp ts =
                             (android.media.AudioTimestamp) p.args[0];
-                        if (ts != null) ts.nanoTime /= MULTIPLIER;
+                        if (ts != null) {
+                            ts.nanoTime /= MULTIPLIER;
+                            ts.framePosition /= MULTIPLIER;
+                        }
                     }
                 }
             );
