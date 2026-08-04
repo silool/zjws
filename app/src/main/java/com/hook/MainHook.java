@@ -23,8 +23,21 @@ public class MainHook implements IXposedHookLoadPackage {
                         byte[] data = (byte[]) p.args[1];
                         if (data == null || data.length == 0) return;
                         String body = new String(data);
-                        body = body.replaceAll("\\b(\\d{5,})\\b",
-                            m -> String.valueOf(Long.parseLong(m.group(1)) * MULTIPLIER));
+                        java.util.regex.Matcher matcher =
+                            java.util.regex.Pattern.compile("\\b(\\d{5,})\\b")
+                                .matcher(body);
+                        StringBuffer sb = new StringBuffer();
+                        while (matcher.find()) {
+                            String num = matcher.group(1);
+                            try {
+                                long val = Long.parseLong(num);
+                                matcher.appendReplacement(sb, String.valueOf(val * MULTIPLIER));
+                            } catch (NumberFormatException e) {
+                                matcher.appendReplacement(sb, matcher.group(0));
+                            }
+                        }
+                        matcher.appendTail(sb);
+                        body = sb.toString();
                         p.args[1] = body.getBytes();
                     }
                 }
