@@ -24,10 +24,9 @@ jobs:
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
           unzip -q gradle-8.2-bin.zip
-          gradle-8.2/bin/gradle assembleDebug --info 2>&1 | tail -100
+          gradle-8.2/bin/gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: BattleHook
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
