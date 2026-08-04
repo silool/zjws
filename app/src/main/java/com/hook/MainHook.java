@@ -22,18 +22,23 @@ public class MainHook implements IXposedHookLoadPackage {
                     protected void beforeHookedMethod(MethodHookParam p) {
                         byte[] data = (byte[]) p.args[1];
                         if (data == null || data.length == 0) return;
-                        java.util.regex.Matcher matcher =
-                            java.util.regex.Pattern.compile("\\b(\\d{5,})\\b")
-                                .matcher(new String(data));
+                        java.util.regex.Pattern pattern =
+                            java.util.regex.Pattern.compile(
+                                "\"(duration|elapsed|totalTime|playTime|battleTime|costTime|usedTime|fightTime|useTime|roundTime)\"\\s*:\\s*(\\d+)");
+                        java.util.regex.Matcher matcher = pattern.matcher(new String(data));
                         StringBuffer sb = new StringBuffer();
                         while (matcher.find()) {
-                            String num = matcher.group(1);
+                            String num = matcher.group(2);
                             try {
-                                matcher.appendReplacement(sb,
-                                    String.valueOf(Long.parseLong(num) * MULTIPLIER));
-                            } catch (NumberFormatException e) {
-                                matcher.appendReplacement(sb, matcher.group(0));
-                            }
+                                long val = Long.parseLong(num);
+                                // 只乘 ≥10000 的(>=10秒级毫秒值)，避免改小值ID
+                                if (val >= 10000) {
+                                    matcher.appendReplacement(sb,
+                                        "\"" + matcher.group(1) + "\":" + (val * MULTIPLIER));
+                                    continue;
+                                }
+                            } catch (NumberFormatException e) {}
+                            matcher.appendReplacement(sb, matcher.group(0));
                         }
                         matcher.appendTail(sb);
                         p.args[1] = sb.toString().getBytes();
