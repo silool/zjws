@@ -13,18 +13,21 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
 
-      - name: Download Gradle
+      - name: Setup Android SDK
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
-          unzip -q gradle-8.2-bin.zip
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Build
-        run: gradle-8.2/bin/gradle assembleDebug --no-daemon
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -q gradle-8.2-bin.zip
+          gradle-8.2/bin/gradle assembleDebug --info 2>&1 | tail -100
 
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: BattleHook
           path: app/build/outputs/apk/debug/*.apk
