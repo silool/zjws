@@ -4,18 +4,12 @@ import de.robv.android.xposed.*;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 网络抓包版 — 记录所有 HTTP/WebSocket 流量到 logcat
+ * 使用: adb logcat -s NetSniff > traffic.txt
+ * 打完一关后 Ctrl+C, 搜索 "duration" / "time" / "battle"
+ */
 public class MainHook implements IXposedHookLoadPackage {
-
-    private static final long MUL = 5;
-
-    // 大小写不敏感 + JSON key锚定
-    private static final java.util.regex.Pattern TIMING =
-        java.util.regex.Pattern.compile(
-            "(?i)(?:\\{|,)\\s*\"(duration|elapsed|(?:total|play|battle|cost" +
-            "|used|fight|use|round|client|server|sync|pass|remain|start|end" +
-            "|create|delta)Time|dtime|etime|rtime|ctime|stime|time(?:stamp)?" +
-            "|tm|clienttimes)" +
-            "\"\\s*:\\s*(\\d+)");
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
@@ -23,83 +17,51 @@ public class MainHook implements IXposedHookLoadPackage {
         final ClassLoader cl = lp.classLoader;
 
         try {
-            // Hook 1: Cocos2d HTTP sendRequest(HttpURLConnection, byte[]) — body在args[1]
+            // HTTP
             XposedHelpers.findAndHookMethod(
                 "org.cocos2dx.lib.Cocos2dxHttpURLConnection",
                 cl, "sendRequest",
                 java.net.HttpURLConnection.class, byte[].class,
-                new BH(1));
+                new XC_MethodHook() {
+                    protected void beforeHookedMethod(MethodHookParam p) {
+                        try {
+                            String url = ((java.net.HttpURLConnection)p.args[0]).getURL().toString();
+                            byte[] data = (byte[]) p.args[1];
+                            String body = (data != null && data.length > 0)
+                                ? new String(data, StandardCharsets.UTF_8) : "(empty)";
+                            android.util.Log.i("NetSniff", "HTTP>>> " + url + "\n" + body.substring(0, Math.min(2000, body.length())));
+                        } catch (Throwable t) {}
+                    }
+                });
 
-            // Hook 2: Cocos2d WebSocket send(String) — text帧
+            // WebSocket text
             try {
                 XposedHelpers.findAndHookMethod(
-                    "org.cocos2dx.lib.Cocos2dxWebSocket",
-                    cl, "send", String.class,
-                    new BH(0));
+                    "org.cocos2dx.lib.Cocos2dxWebSocket", cl, "send", String.class,
+                    new XC_MethodHook() {
+                        protected void beforeHookedMethod(MethodHookParam p) {
+                            String s = p.args[0].toString();
+                            android.util.Log.i("NetSniff", "WS>>> " + s.substring(0, Math.min(2000, s.length())));
+                        }
+                    });
             } catch (Throwable ignored) {}
 
-            // Hook 3: Cocos2d WebSocket send(byte[]) — binary帧
+            // WebSocket binary
             try {
                 XposedHelpers.findAndHookMethod(
-                    "org.cocos2dx.lib.Cocos2dxWebSocket",
-                    cl, "send", byte[].class,
-                    new BH(0));
+                    "org.cocos2dx.lib.Cocos2dxWebSocket", cl, "send", byte[].class,
+                    new XC_MethodHook() {
+                        protected void beforeHookedMethod(MethodHookParam p) {
+                            try {
+                                String s = new String((byte[])p.args[0], StandardCharsets.UTF_8);
+                                android.util.Log.i("NetSniff", "WSB>>> " + s.substring(0, Math.min(2000, s.length())));
+                            } catch (Throwable t) {}
+                        }
+                    });
             } catch (Throwable ignored) {}
 
         } catch (Throwable t) {
-            android.util.Log.e("BH", "reg", t);
-        }
-    }
-
-    static class BH extends XC_MethodHook {
-        final int idx;
-        BH(int i) { idx = i; }
-
-        protected void beforeHookedMethod(MethodHookParam p) {
-            try {
-                Object raw = p.args[idx];
-                byte[] data = (raw instanceof String)
-                    ? ((String) raw).getBytes(StandardCharsets.UTF_8)
-                    : (byte[]) raw;
-                if (data == null || data.length < 10) return;
-
-                String body = new String(data, StandardCharsets.UTF_8);
-                String lo = body.toLowerCase();
-                // 快速跳过
-                if (!lo.contains("time") && !lo.contains("duration")
-                    && !lo.contains("elapsed") && !lo.contains("dtime")
-                    && !lo.contains("stime") && !lo.contains("timestamp")
-                    && !lo.contains("tm")) return;
-                // 跳过认证请求
-                if (lo.contains("\"token\"") || lo.contains("\"sign\"")
-                    || lo.contains("\"auth\"") || lo.contains("\"key\"")) return;
-
-                java.util.regex.Matcher m = TIMING.matcher(body);
-                if (!m.find()) return;
-                m.reset();
-
-                StringBuffer sb = new StringBuffer();
-                while (m.find()) {
-                    String grp0 = m.group(0);
-                    String num  = m.group(2);
-                    try {
-                        long v = Long.parseLong(num);
-                        if (v >= 1000) {
-                            m.appendReplacement(sb,
-                                grp0.substring(0, grp0.length() - num.length())
-                                + (v * MUL));
-                            continue;
-                        }
-                    } catch (NumberFormatException e) {}
-                    m.appendReplacement(sb, grp0);
-                }
-                m.appendTail(sb);
-                String out = sb.toString();
-                p.args[idx] = (raw instanceof String) ? out
-                    : out.getBytes(StandardCharsets.UTF_8);
-            } catch (Throwable t) {
-                android.util.Log.e("BH", "proc", t);
-            }
+            android.util.Log.e("NetSniff", "fail", t);
         }
     }
 }
