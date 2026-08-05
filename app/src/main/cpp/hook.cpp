@@ -49,11 +49,11 @@ static void patch_timing(char *buf, ssize_t len) {
             }
             continue;
         }
-        // Match "totalTime": / "battleTime": / "elapsed":
-        if ((memcmp(p, "\"totalTime\"", 9) == 0 && (p += 9)) ||
-            (memcmp(p, "\"battleTime\"", 11) == 0 && (p += 11)) ||
-            (memcmp(p, "\"playTime\"", 9) == 0 && (p += 9)) ||
-            (memcmp(p, "\"elapsed\"", 7) == 0 && (p += 7))) {
+        // Match "totalTime": / "battleTime": / "playTime": / "elapsed":
+        if ((memcmp(p, "\"totalTime\"", 11) == 0 && (p += 11)) ||
+            (memcmp(p, "\"battleTime\"", 12) == 0 && (p += 12)) ||
+            (memcmp(p, "\"playTime\"", 10) == 0 && (p += 10)) ||
+            (memcmp(p, "\"elapsed\"", 9) == 0 && (p += 9))) {
             while (p < end && (*p == ' ' || *p == ':' || *p == '\t')) p++;
             if (*p >= '0' && *p <= '9') {
                 long v = 0;
