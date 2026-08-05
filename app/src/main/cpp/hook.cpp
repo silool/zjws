@@ -1,6 +1,6 @@
 #include <jni.h>
 #include <string.h>
-#include <cstdio>
+#include <stdio.h>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -103,7 +103,7 @@ void init_hook() {
     if (handle) {
         orig_send = (send_t)dlsym(handle, "send");
         if (orig_send) {
-            write_jump((void *)orig_send, (void *)hooked_send);
+            write_jump((char *)orig_send, (void *)hooked_send);
             LOGI("send hooked");
         }
     }
@@ -112,7 +112,7 @@ void init_hook() {
     if (handle) {
         orig_ssl_write = (SSL_write_t)dlsym(handle, "SSL_write");
         if (orig_ssl_write) {
-            write_jump((void *)orig_ssl_write, (void *)hooked_ssl_write);
+            write_jump((char *)orig_ssl_write, (void *)hooked_ssl_write);
             LOGI("SSL_write hooked");
         }
     }
