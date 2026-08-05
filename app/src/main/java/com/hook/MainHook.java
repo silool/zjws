@@ -58,7 +58,7 @@ public class MainHook implements IXposedHookLoadPackage {
                 String body = new String(data, StandardCharsets.UTF_8);
                 // 快速跳过：不含time/duration/elapsed/dtime/stime/timestamp
                 String lo = body.toLowerCase();
-                if (!lo.contains("\"time") && !lo.contains("\"duration")
+                if (!lo.contains("time") && !lo.contains("duration")
                     && !lo.contains("\"elapsed\"") && !lo.contains("\"dtime\"")
                     && !lo.contains("\"stime\"") && !lo.contains("\"timestamp\""))
                     return;
