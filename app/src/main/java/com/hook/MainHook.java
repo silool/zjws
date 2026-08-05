@@ -60,7 +60,8 @@ public class MainHook implements IXposedHookLoadPackage {
                 String lo = body.toLowerCase();
                 if (!lo.contains("time") && !lo.contains("duration")
                     && !lo.contains("\"elapsed\"") && !lo.contains("\"dtime\"")
-                    && !lo.contains("\"stime\"") && !lo.contains("\"timestamp\""))
+                    && !lo.contains("\"stime\"") && !lo.contains("\"timestamp\"")
+                    && !lo.contains("\"tm\""))
                     return;
                 // 跳过认证请求
                 if (lo.contains("\"token\"") || lo.contains("\"sign\"")
