@@ -8,7 +8,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private static final long MUL = 5;
 
-    // (?i) 大小写不敏感，匹配所有Time/time变体
+    // 大小写不敏感 + JSON key锚定
     private static final java.util.regex.Pattern TIMING =
         java.util.regex.Pattern.compile(
             "(?i)(?:\\{|,)\\s*\"(duration|elapsed|(?:total|play|battle|cost" +
@@ -23,18 +23,26 @@ public class MainHook implements IXposedHookLoadPackage {
         final ClassLoader cl = lp.classLoader;
 
         try {
-            // Cocos2d HTTP
+            // Hook 1: Cocos2d HTTP sendRequest(HttpURLConnection, byte[]) — body在args[1]
             XposedHelpers.findAndHookMethod(
                 "org.cocos2dx.lib.Cocos2dxHttpURLConnection",
                 cl, "sendRequest",
                 java.net.HttpURLConnection.class, byte[].class,
                 new BH(1));
 
-            // Cocos2d WebSocket
+            // Hook 2: Cocos2d WebSocket send(String) — text帧
             try {
                 XposedHelpers.findAndHookMethod(
                     "org.cocos2dx.lib.Cocos2dxWebSocket",
                     cl, "send", String.class,
+                    new BH(0));
+            } catch (Throwable ignored) {}
+
+            // Hook 3: Cocos2d WebSocket send(byte[]) — binary帧
+            try {
+                XposedHelpers.findAndHookMethod(
+                    "org.cocos2dx.lib.Cocos2dxWebSocket",
+                    cl, "send", byte[].class,
                     new BH(0));
             } catch (Throwable ignored) {}
 
@@ -56,17 +64,15 @@ public class MainHook implements IXposedHookLoadPackage {
                 if (data == null || data.length < 10) return;
 
                 String body = new String(data, StandardCharsets.UTF_8);
-                // 快速跳过：不含time/duration/elapsed/dtime/stime/timestamp
                 String lo = body.toLowerCase();
+                // 快速跳过
                 if (!lo.contains("time") && !lo.contains("duration")
-                    && !lo.contains("\"elapsed\"") && !lo.contains("\"dtime\"")
-                    && !lo.contains("\"stime\"") && !lo.contains("\"timestamp\"")
-                    && !lo.contains("\"tm\""))
-                    return;
+                    && !lo.contains("elapsed") && !lo.contains("dtime")
+                    && !lo.contains("stime") && !lo.contains("timestamp")
+                    && !lo.contains("tm")) return;
                 // 跳过认证请求
                 if (lo.contains("\"token\"") || lo.contains("\"sign\"")
-                    || lo.contains("\"auth\"") || lo.contains("\"key\""))
-                    return;
+                    || lo.contains("\"auth\"") || lo.contains("\"key\"")) return;
 
                 java.util.regex.Matcher m = TIMING.matcher(body);
                 if (!m.find()) return;
@@ -74,8 +80,8 @@ public class MainHook implements IXposedHookLoadPackage {
 
                 StringBuffer sb = new StringBuffer();
                 while (m.find()) {
-                    String grp0 = m.group(0);  // 完整匹配
-                    String num  = m.group(2);   // 数值
+                    String grp0 = m.group(0);
+                    String num  = m.group(2);
                     try {
                         long v = Long.parseLong(num);
                         if (v >= 1000) {
