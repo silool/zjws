@@ -40,8 +40,10 @@ public class MainHook implements IXposedHookLoadPackage {
                     "org.cocos2dx.lib.Cocos2dxWebSocket", cl, "send", String.class,
                     new XC_MethodHook() {
                         protected void beforeHookedMethod(MethodHookParam p) {
-                            String s = p.args[0].toString();
-                            android.util.Log.i("NetSniff", "WS>>> " + s.substring(0, Math.min(2000, s.length())));
+                            try {
+                                String s = (String) p.args[0];
+                                if (s != null) android.util.Log.i("NetSniff", "WS>>> " + s.substring(0, Math.min(2000, s.length())));
+                            } catch (Throwable t) {}
                         }
                     });
             } catch (Throwable ignored) {}
