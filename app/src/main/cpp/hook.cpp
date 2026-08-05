@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <string.h>
+#include <cstdio>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -10,7 +11,7 @@
 #define MUL 5
 
 // ============ ARM64 inline hook ============
-static void write_jump(void *addr, void *target) {
+static void write_jump(char *addr, void *target) {
     size_t page = (size_t)addr & ~0xFFF;
     mprotect((void *)page, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC);
     uint32_t *insn = (uint32_t *)addr;
@@ -18,7 +19,7 @@ static void write_jump(void *addr, void *target) {
     insn[0] = 0x58000051; // ldr x17, #8
     insn[1] = 0xD61F0220; // br x17
     *(void **)(insn + 2) = target;
-    __builtin___clear_cache(addr, (char *)addr + 24);
+    __builtin___clear_cache(addr, addr + 24);
     mprotect((void *)page, 0x1000, PROT_READ | PROT_EXEC);
 }
 
