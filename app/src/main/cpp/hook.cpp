@@ -95,17 +95,20 @@ int hooked_ssl_write(void *ssl, const void *buf, int len) {
 }
 
 // ============ Init ============
-__attribute__((constructor))
-void init_hook() {
-    LOGI("TimFix loaded — installing hooks...");
+jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+    LOGI("JNI_OnLoad — installing hooks...");
 
     void *handle = dlopen("libc.so", RTLD_NOW);
     if (handle) {
         orig_send = (send_t)dlsym(handle, "send");
         if (orig_send) {
             write_jump((char *)orig_send, (void *)hooked_send);
-            LOGI("send hooked");
+            LOGI("send hooked at %p", orig_send);
+        } else {
+            LOGI("send NOT FOUND");
         }
+    } else {
+        LOGI("libc.so NOT FOUND");
     }
 
     handle = dlopen("libssl.so", RTLD_NOW);
@@ -113,7 +116,13 @@ void init_hook() {
         orig_ssl_write = (SSL_write_t)dlsym(handle, "SSL_write");
         if (orig_ssl_write) {
             write_jump((char *)orig_ssl_write, (void *)hooked_ssl_write);
-            LOGI("SSL_write hooked");
+            LOGI("SSL_write hooked at %p", orig_ssl_write);
+        } else {
+            LOGI("SSL_write NOT FOUND");
         }
+    } else {
+        LOGI("libssl.so NOT FOUND");
     }
+
+    return JNI_VERSION_1_6;
 }
