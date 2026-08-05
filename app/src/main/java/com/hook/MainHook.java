@@ -7,10 +7,14 @@ import java.nio.charset.StandardCharsets;
 public class MainHook implements IXposedHookLoadPackage {
 
     private static final long MULTIPLIER = 5;
-    // 仅匹配JSON key位置（前有{或,），避免误伤string value中的同名字段
+    // JSON timing字段：前有{或,锚定
     private static final java.util.regex.Pattern TIMING_PATTERN =
         java.util.regex.Pattern.compile(
-            "(?:\\{|,)\\s*\"(duration|elapsed|totalTime|playTime|battleTime|costTime|usedTime|fightTime|useTime|roundTime)\"\\s*:\\s*(\\d+)");
+            "(?:\\{|,)\\s*\"(duration|elapsed|totalTime|playTime|battleTime" +
+            "|costTime|usedTime|fightTime|useTime|roundTime|clientTime" +
+            "|serverTime|syncTime|deltaTime|passTime|remainTime" +
+            "|dtime|stime|etime|rtime|ctime|clienttimes" +
+            "|time|timestamp|tm)\"\\s*:\\s*(\\d+)");
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -18,52 +22,49 @@ public class MainHook implements IXposedHookLoadPackage {
         final ClassLoader cl = lpparam.classLoader;
 
         try {
-            // HTTP 上报 duration ×5
             XposedHelpers.findAndHookMethod(
                 "org.cocos2dx.lib.Cocos2dxHttpURLConnection",
                 cl, "sendRequest",
                 java.net.HttpURLConnection.class, byte[].class,
                 new XC_MethodHook() {
                     protected void beforeHookedMethod(MethodHookParam p) {
-                        byte[] data = (byte[]) p.args[1];
-                        if (data == null || data.length == 0) return;
-                        // 取URL判断是否为战斗上报，避免拦截认证请求
                         try {
-                            java.net.HttpURLConnection conn =
-                                (java.net.HttpURLConnection) p.args[0];
-                            String url = conn.getURL().toString();
-                            // 只处理战斗上报相关URL，认证/心跳原封不动
-                            if (url.contains("report") || url.contains("battle")
-                                || url.contains("fight") || url.contains("pve")
-                                || url.contains("pvp") || url.contains("stage")
-                                || url.contains("round")) {
-                                // OK — 落到下面的修改逻辑
-                            } else {
-                                return; // 跳过，不修改
+                            byte[] data = (byte[]) p.args[1];
+                            if (data == null || data.length < 10) return;
+                            String body = new String(data, StandardCharsets.UTF_8);
+                            if (!body.contains("\"duration\"") &&
+                                !body.contains("\"time\"") &&
+                                !body.contains("\"totalTime\"") &&
+                                !body.contains("\"elapsed\"") &&
+                                !body.contains("\"playTime\"") &&
+                                !body.contains("\"battleTime\"") &&
+                                !body.contains("\"costTime\"") &&
+                                !body.contains("\"usedTime\"") &&
+                                !body.contains("\"fightTime\"") &&
+                                !body.contains("\"clientTime\"") &&
+                                !body.contains("\"dtime\"") &&
+                                !body.contains("\"stime\"") &&
+                                !body.contains("\"timestamp\"")) return;
+                            java.util.regex.Matcher m = TIMING_PATTERN.matcher(body);
+                            if (!m.find()) return;
+                            m.reset();
+                            StringBuffer sb = new StringBuffer();
+                            while (m.find()) {
+                                String num = m.group(2);
+                                try {
+                                    long val = Long.parseLong(num);
+                                    if (val >= 1000) {
+                                        m.appendReplacement(sb,
+                                            m.group(0).replaceFirst("\\d+",
+                                                String.valueOf(val * MULTIPLIER)));
+                                        continue;
+                                    }
+                                } catch (NumberFormatException e) {}
+                                m.appendReplacement(sb, m.group(0));
                             }
-                        } catch (Exception e) {
-                            // 获取URL失败则保守跳过
-                            return;
-                        }
-                        java.util.regex.Matcher matcher =
-                            TIMING_PATTERN.matcher(new String(data, StandardCharsets.UTF_8));
-                        StringBuffer sb = new StringBuffer();
-                        while (matcher.find()) {
-                            String num = matcher.group(2);
-                            try {
-                                long val = Long.parseLong(num);
-                                // >=10000 = 10秒级毫秒值，小值可能是ID不做修改
-                                if (val >= 10000) {
-                                    matcher.appendReplacement(sb,
-                                        matcher.group(0).replaceFirst("\\d+",
-                                            String.valueOf(val * MULTIPLIER)));
-                                    continue;
-                                }
-                            } catch (NumberFormatException e) {}
-                            matcher.appendReplacement(sb, matcher.group(0));
-                        }
-                        matcher.appendTail(sb);
-                        p.args[1] = sb.toString().getBytes(StandardCharsets.UTF_8);
+                            m.appendTail(sb);
+                            p.args[1] = sb.toString().getBytes(StandardCharsets.UTF_8);
+                        } catch (Throwable ignored) {}
                     }
                 }
             );
