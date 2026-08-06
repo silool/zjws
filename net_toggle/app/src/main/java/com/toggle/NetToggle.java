@@ -108,7 +108,7 @@ public class NetToggle extends Service {
 
     private void sh(String cmd) {
         try {
-            Process p = Runtime.getRuntime().exec(new String[]{"su", "-c", cmd});
+            java.lang.Process p = Runtime.getRuntime().exec(new String[]{"su", "-c", cmd});
             p.waitFor();
         } catch (Exception ignored) {}
     }
