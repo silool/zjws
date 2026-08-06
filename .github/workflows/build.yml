@@ -27,14 +27,25 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653" "cmake;3.22.1"
 
-      - name: Build
+      - name: Build BattleHook
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
           unzip -q gradle-8.2-bin.zip
           gradle-8.2/bin/gradle assembleDebug
 
+      - name: Build NetToggle
+        run: |
+          cd net_toggle
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ../gradle-8.2/bin/gradle assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: BattleHook
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NetToggle
+          path: net_toggle/app/build/outputs/apk/debug/app-debug.apk
