@@ -68,6 +68,34 @@ public class NetToggle extends Service {
         p.gravity = Gravity.TOP | Gravity.START;
         p.x = 50; p.y = 200;
         wm.addView(floatView, p);
+
+        // 拖拽移动
+        final WindowManager.LayoutParams lp = p;
+        floatView.setOnTouchListener(new View.OnTouchListener() {
+            float startX, startY, baseX, baseY;
+            boolean dragging;
+            @Override
+            public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startX = e.getRawX(); startY = e.getRawY();
+                        baseX = lp.x; baseY = lp.y;
+                        dragging = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        float dx = e.getRawX() - startX;
+                        float dy = e.getRawY() - startY;
+                        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) dragging = true;
+                        if (dragging) {
+                            lp.x = (int)(baseX + dx);
+                            lp.y = (int)(baseY + dy);
+                            wm.updateViewLayout(floatView, lp);
+                        }
+                        return true;
+                }
+                return false;
+            }
+        });
     }
 
     @Override
