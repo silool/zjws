@@ -33,6 +33,9 @@ public class NetToggle extends Service {
             getSystemService(NotificationManager.class).createNotificationChannel(ch);
             startForeground(1, new Notification.Builder(this, "net")
                 .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build());
+        } else {
+            startForeground(1, new Notification.Builder(this)
+                .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build());
         }
 
         try {
