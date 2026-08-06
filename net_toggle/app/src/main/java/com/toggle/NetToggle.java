@@ -26,16 +26,22 @@ public class NetToggle extends Service {
     public void onCreate() {
         super.onCreate();
 
+        Notification notif;
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel ch = new NotificationChannel(
                 "net", "网络控制", NotificationManager.IMPORTANCE_MIN);
             ch.setDescription("");
             getSystemService(NotificationManager.class).createNotificationChannel(ch);
-            startForeground(1, new Notification.Builder(this, "net")
-                .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build());
+            notif = new Notification.Builder(this, "net")
+                .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build();
         } else {
-            startForeground(1, new Notification.Builder(this)
-                .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build());
+            notif = new Notification.Builder(this)
+                .setContentTitle("NetToggle").setSmallIcon(android.R.drawable.ic_menu_manage).build();
+        }
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(1, notif);
         }
 
         try {
