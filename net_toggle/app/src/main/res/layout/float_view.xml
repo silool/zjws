@@ -15,12 +15,14 @@
         android:textColor="#FFFFFF"
         android:textSize="12sp" />
 
-    <ImageView
+    <TextView
         android:id="@+id/close"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:padding="2dp"
+        android:text="✕"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:gravity="center"
         android:layout_marginStart="8dp" />
 
 </LinearLayout>
