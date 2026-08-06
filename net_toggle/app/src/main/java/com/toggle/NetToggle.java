@@ -39,7 +39,7 @@ public class NetToggle extends Service {
             uid = String.valueOf(getPackageManager()
                 .getApplicationInfo(PKG, 0).uid);
         } catch (PackageManager.NameNotFoundException e) {
-            uid = "10250";
+            uid = "10253"; // fallback
         }
 
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
